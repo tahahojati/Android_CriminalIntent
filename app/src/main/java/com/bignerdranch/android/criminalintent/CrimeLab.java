@@ -6,9 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Created by ProfessorTaha on 10/15/2017.
- */
 
 public class CrimeLab {
     private static CrimeLab sCrimeLab;
@@ -19,6 +16,7 @@ public class CrimeLab {
             Crime crime = new Crime();
             crime.setTitle("Crime #" + i);
             crime.setSolved(i % 2 == 0); // Every other one
+            crime.setRequiresPolice(i%3 == 0);
             mCrimes.add(crime);
         }
     }

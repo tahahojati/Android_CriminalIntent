@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public class Crime {
     private UUID mId;
+    private boolean mRequiresPolice;
     private  String mTitle;
     private Date mDate;
     private boolean mSolved;
@@ -16,6 +17,7 @@ public class Crime {
     public Crime(){
         mId = UUID.randomUUID();
         mDate = new Date();
+        mRequiresPolice = false;
     }
     public UUID getId() {
         return mId;
@@ -43,5 +45,13 @@ public class Crime {
 
     public void setSolved(boolean solved) {
         mSolved = solved;
+    }
+
+    public boolean requiresPolice() {
+        return mRequiresPolice;
+    }
+
+    public void setRequiresPolice(boolean requiresPolice) {
+        mRequiresPolice = requiresPolice;
     }
 }

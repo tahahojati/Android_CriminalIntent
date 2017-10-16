@@ -19,13 +19,17 @@ public class CrimeListFragment extends Fragment {
     private CrimeAdapter mAdapter;
     private Crime mCrime;
 
-    private class CrimeHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
-        private TextView mTitleTextView;
-        private TextView mDateTextView;
-        CrimeHolder(LayoutInflater inflater, ViewGroup parent) {
-            super(inflater.inflate(R.layout.list_item_crime, parent, false));
+    private abstract class CrimeHolderAbstract extends RecyclerView.ViewHolder implements View.OnClickListener {
+        TextView mTitleTextView;
+        TextView mDateTextView;
+        CrimeHolderAbstract(View v){
+            super(v);
+            initialize();
+        }
+        void initialize(){
             mTitleTextView = itemView.findViewById(R.id.crime_title);
             mDateTextView = itemView.findViewById(R.id.crime_date);
+            itemView.setOnClickListener(this);
         }
         void bind(Crime crime){
             mCrime = crime;
@@ -38,25 +42,44 @@ public class CrimeListFragment extends Fragment {
             Toast.makeText(getActivity(), mCrime.getTitle()+" clicked!", Toast.LENGTH_SHORT).show();
         }
     }
-    private class CrimeAdapter extends RecyclerView.Adapter<CrimeHolder>{
+    private class CrimeHolder extends CrimeHolderAbstract{
+        CrimeHolder(LayoutInflater inflater, ViewGroup parent) {
+            super(inflater.inflate(R.layout.list_item_crime, parent, false));
+        }
+    }
+    private class CrimeHolderWithCop extends CrimeHolderAbstract{
+        CrimeHolderWithCop(LayoutInflater inflater, ViewGroup parent) {
+            super(inflater.inflate(R.layout.list_item_crime_police, parent, false));
+        }
+    }
+
+    private class CrimeAdapter extends RecyclerView.Adapter<CrimeHolderAbstract>{
         private List<Crime> mCrimes;
         CrimeAdapter(List<Crime> crimes){
             mCrimes = crimes;
         }
         @Override
-        public CrimeHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        public CrimeHolderAbstract onCreateViewHolder(ViewGroup parent, int viewType) {
             LayoutInflater layoutInflater = LayoutInflater.from(getActivity());
-            return new CrimeHolder(layoutInflater, parent);
+            if(viewType == 0)
+                return new CrimeHolder(layoutInflater, parent);
+            else
+                return new CrimeHolderWithCop(layoutInflater, parent);
         }
 
         @Override
-        public void onBindViewHolder(CrimeHolder holder, int position) {
+        public void onBindViewHolder(CrimeHolderAbstract holder, int position) {
             holder.bind(mCrimes.get(position));
         }
 
         @Override
         public int getItemCount() {
             return mCrimes.size();
+        }
+
+        @Override
+        public int getItemViewType(int position) {
+            return (mCrimes.get(position).requiresPolice())?1:0;
         }
     }
     @Nullable
