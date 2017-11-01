@@ -126,7 +126,14 @@ public class CrimeFragment extends Fragment {
         }
     }
 
+    @Override
+    public void onPause() {
+        super.onPause();
+        CrimeLab.get(getActivity()).updateCrime(mCrime);
+    }
+
     private void updateDate(Date date) {
         mDateButton.setText(new SimpleDateFormat("EEE, MMM d, yyyy") .format(date));
     }
+
 }
