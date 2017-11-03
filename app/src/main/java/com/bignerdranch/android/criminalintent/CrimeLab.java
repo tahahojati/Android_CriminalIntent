@@ -6,8 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 
 import com.bignerdranch.android.criminalintent.database.CrimeBaseHelper;
-import com.bignerdranch.android.criminalintent.database.CrimeCUrsorWrapper;
-import com.bignerdranch.android.criminalintent.database.CrimeDbSchema;
+import com.bignerdranch.android.criminalintent.database.CrimeCursorWrapper;
 import com.bignerdranch.android.criminalintent.database.CrimeDbSchema.CrimeTable;
 
 import java.util.ArrayList;
@@ -33,7 +32,7 @@ public class CrimeLab {
 
     public List<Crime> getCrimes(){
         List<Crime> crimes = new ArrayList<Crime>();
-        CrimeCUrsorWrapper cursor = queryCrimes(null, null);
+        CrimeCursorWrapper cursor = queryCrimes(null, null);
 
         try{
             cursor.moveToFirst();
@@ -48,7 +47,7 @@ public class CrimeLab {
     }
     public Crime getCrime(UUID id) {
 
-        CrimeCUrsorWrapper cursor = queryCrimes(
+        CrimeCursorWrapper cursor = queryCrimes(
                 CrimeTable.Cols.UUID + " = ?",
                 new String[] { id.toString() }
         );
@@ -76,7 +75,7 @@ public class CrimeLab {
         ContentValues cv = getContentValues(crime);
         mDatabase.update(CrimeTable.NAME, cv, CrimeTable.Cols.UUID+" = ?", new String[] {uuidString});
     }
-    private CrimeCUrsorWrapper queryCrimes(String whereClause, String[] whereArgs) {
+    private CrimeCursorWrapper queryCrimes(String whereClause, String[] whereArgs) {
         Cursor cursor = mDatabase.query(
                 CrimeTable.NAME,
                 null, // columns - null selects all columns
@@ -87,7 +86,7 @@ public class CrimeLab {
                 null  // orderBy
         );
 
-        return new CrimeCUrsorWrapper(cursor);
+        return new CrimeCursorWrapper(cursor);
     }
     private static ContentValues getContentValues(Crime crime){
         ContentValues cv = new ContentValues();
@@ -95,6 +94,7 @@ public class CrimeLab {
         cv.put(CrimeTable.Cols.TITLE, crime.getTitle());
         cv.put(CrimeTable.Cols.DATE, crime.getDate().getTime());
         cv.put(CrimeTable.Cols.SOLVED, crime.isSolved() ? 1 : 0);
+        cv.put(CrimeTable.Cols.SUSPECT, crime.getSuspect());
         return cv;
     }
 }
