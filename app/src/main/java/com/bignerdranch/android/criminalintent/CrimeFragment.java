@@ -3,13 +3,19 @@ package com.bignerdranch.android.criminalintent;
 import android.app.FragmentManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Picture;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.provider.MediaStore;
 import android.support.annotation.Nullable;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.ShareCompat;
+import android.support.v4.content.FileProvider;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.text.format.DateFormat;
@@ -23,9 +29,14 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 
+import java.io.File;
+import java.lang.ref.ReferenceQueue;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 import static android.app.Activity.RESULT_OK;
@@ -44,13 +55,18 @@ public class CrimeFragment extends Fragment {
     private CheckBox mSolvedCheckBox;
     private Button mReportButton;
     private Button mSuspectButton;
+    private ImageButton mPhotoButton;
+    private ImageView mPhotoView;
+    private File mPhotoFile;
     private static final int REQUEST_CONTACT = 1;
+    private static final int REQUEST_CAMERA = 11;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         UUID crimeID = (UUID) getArguments().getSerializable(ARG_CRIME_ID);
         mCrime = CrimeLab.get(getActivity()).getCrime(crimeID);
+        mPhotoFile = CrimeLab.get(getActivity()).getPhotoFile(mCrime);
         setHasOptionsMenu(true);
     }
 
@@ -98,11 +114,12 @@ public class CrimeFragment extends Fragment {
             @Override
             public void onClick(View view) {
                 ShareCompat.IntentBuilder ib = ShareCompat.IntentBuilder.from(getActivity());
-                Intent i = ib.setType("text/plain")
+                ib.setType("text/plain")
                         .setSubject(getString(R.string.crime_report_subject))
                         .setText(getCrimeReport())
                         .setChooserTitle(getString(R.string.send_report))
-                        .getIntent();
+                        .startChooser();
+                Intent i = ib .getIntent();
                 //Intent i = new Intent(Intent.ACTION_SEND);
                 //i.setType("text/plain");
                 //i.putExtra(Intent.EXTRA_TEXT, getCrimeReport());
@@ -133,11 +150,33 @@ public class CrimeFragment extends Fragment {
         if (mCrime.getSuspect() != null) {
             mSuspectButton.setText(mCrime.getSuspect());
         }
-        PackageManager packageManager = getActivity().getPackageManager();
+        final PackageManager packageManager = getActivity().getPackageManager();
         if (packageManager.resolveActivity(pickContact,
                 PackageManager.MATCH_DEFAULT_ONLY) == null) {
             mSuspectButton.setEnabled(false);
         }
+
+        mPhotoButton = (ImageButton) v.findViewById(R.id.crime_camera);
+        mPhotoView = (ImageView) v.findViewById(R.id.crime_photo);
+        final Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        mPhotoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Uri uri =  FileProvider.getUriForFile(getActivity(),
+                        "com.bignerdranch.android.criminalintent.fileprovider", mPhotoFile);
+                cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+                List<ResolveInfo> cameraActivities = packageManager.queryIntentActivities(cameraIntent, PackageManager.MATCH_DEFAULT_ONLY);
+                for(ResolveInfo activity : cameraActivities){
+                    getActivity().grantUriPermission(activity.activityInfo.packageName, uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                }
+                startActivityForResult(cameraIntent, REQUEST_CAMERA);
+            }
+        });
+
+        if(null == packageManager.resolveActivity(cameraIntent, PackageManager.MATCH_DEFAULT_ONLY)){
+            mPhotoButton.setEnabled(false);
+        }
+        updatePhotoView();
 
         return v;
     }
@@ -151,6 +190,12 @@ public class CrimeFragment extends Fragment {
             Date date = (Date) data.getSerializableExtra(DatePickerFragment.EXTRA_DATE);
             mCrime.setDate(date);
             updateDate(date);
+        } else if (requestCode == REQUEST_CAMERA){
+            Uri uri = FileProvider.getUriForFile(getActivity(),
+                    "com.bignerdranch.android.criminalintent.fileprovider",
+                    mPhotoFile);
+            getActivity().revokeUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            updatePhotoView();
         } else if (requestCode == REQUEST_CONTACT && data != null){
             Uri contactUri = data.getData();
             String[] queryFields = new String[] {
@@ -227,6 +272,28 @@ public class CrimeFragment extends Fragment {
                 mCrime.getTitle(), dateString, solvedString, suspect);
 
         return report;
+    }
+    private void updatePhotoView(){
+        int w = mPhotoView.getWidth();
+        int h = mPhotoView.getHeight();
+        Bitmap bitmap;
+        if(mPhotoFile == null || !mPhotoFile.exists()){
+            mPhotoView.setImageDrawable(null);
+        } else {
+            if(w ==0 || h == 0){
+                bitmap = PictureUtils.getScaledBitmap(mPhotoFile.getPath(), getActivity());
+            } else {
+                bitmap = PictureUtils.getScaledBitmap(mPhotoFile.getPath(), w, h);
+            }
+            mPhotoView.setImageBitmap(bitmap);
+            mPhotoView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    DialogFragment df  = CrimePhotoDetail.newInstance(mPhotoFile.getPath());
+                    df.show(getFragmentManager(), "R.layout.fragment_crime_photo_detail");
+                }
+            });
+        }
     }
 
 }
