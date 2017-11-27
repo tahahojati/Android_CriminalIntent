@@ -1,6 +1,7 @@
 package com.bignerdranch.android.criminalintent;
 
 import android.app.FragmentManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -60,6 +61,23 @@ public class CrimeFragment extends Fragment {
     private File mPhotoFile;
     private static final int REQUEST_CONTACT = 1;
     private static final int REQUEST_CAMERA = 11;
+    private Callbacks mCallbacks;
+
+    public interface Callbacks {
+        void onCrimeUpdated(Crime crime);
+    }
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        mCallbacks = (Callbacks)context;
+    }
+
+    @Override
+    public void onDetach() {
+        super.onDetach();
+        mCallbacks = null;
+    }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -91,6 +109,7 @@ public class CrimeFragment extends Fragment {
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
                 mCrime.setTitle(charSequence.toString());
+                updateCrime();
             }
             @Override
             public void afterTextChanged(Editable editable) {
@@ -135,6 +154,7 @@ public class CrimeFragment extends Fragment {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                 mCrime.setSolved(b);
+                updateCrime();
             }
         });
         mSuspectButton = v.findViewById(R.id.crime_suspect);
@@ -189,12 +209,14 @@ public class CrimeFragment extends Fragment {
         if(requestCode == REQUEST_DATE){
             Date date = (Date) data.getSerializableExtra(DatePickerFragment.EXTRA_DATE);
             mCrime.setDate(date);
+            updateCrime();
             updateDate(date);
         } else if (requestCode == REQUEST_CAMERA){
             Uri uri = FileProvider.getUriForFile(getActivity(),
                     "com.bignerdranch.android.criminalintent.fileprovider",
                     mPhotoFile);
             getActivity().revokeUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            updateCrime();
             updatePhotoView();
         } else if (requestCode == REQUEST_CONTACT && data != null){
             Uri contactUri = data.getData();
@@ -221,6 +243,7 @@ public class CrimeFragment extends Fragment {
             } finally {
                 c.close();
             }
+            updateCrime();
         }
     }
 
@@ -247,8 +270,11 @@ public class CrimeFragment extends Fragment {
     public void onPause() {
         super.onPause();
         CrimeLab.get(getActivity()).updateCrime(mCrime);
+        mCallbacks.onCrimeUpdated(mCrime);
     }
-
+    private void updateCrime() {
+        updateCrime();
+    }
     private void updateDate(Date date) {
         mDateButton.setText(new SimpleDateFormat("EEE, MMM d, yyyy") .format(date));
     }
@@ -279,7 +305,13 @@ public class CrimeFragment extends Fragment {
         Bitmap bitmap;
         if(mPhotoFile == null || !mPhotoFile.exists()){
             mPhotoView.setImageDrawable(null);
+            mPhotoView.setContentDescription(
+                    getString(R.string.crime_photo_no_image_description)
+            );
         } else {
+            mPhotoView.setContentDescription(
+                    getString(R.string.crime_photo_image_description)
+            );
             if(w ==0 || h == 0){
                 bitmap = PictureUtils.getScaledBitmap(mPhotoFile.getPath(), getActivity());
             } else {
